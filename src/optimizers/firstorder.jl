@@ -12,7 +12,8 @@ module FirstOrderOptimizers
     import LinearAlgebra
 
     import FiniteDifferences: FiniteDifferenceMethod, central_fdm
-    import ..ConstantSeries
+    import ..BernoulliDistribution
+    import ..PowerSeries
 
     """
     """
@@ -26,6 +27,25 @@ module FirstOrderOptimizers
 
         __cfd_0 = central_fdm(p,0)
         __cfd_1 = central_fdm(p,1)
+    end
+
+    function SPSA(
+        L::Int;
+        η = nothing,
+        h = nothing,
+        e = nothing,
+        p = 2,
+        n = 1,
+        trust_region = typemax(Float),
+    )
+        isnothing(η) && (η = (0.2, 0.602))
+        isnothing(h) && (h = (0.2, 0.602))
+        isnothing(e) && (e = BernoulliDistribution(L=L))
+
+        η isa Tuple && (η = PowerSeries(a0=η[1], γ=η[2]))
+        h isa Tuple && (h = PowerSeries(a0=h[1], γ=h[2]))
+
+        return SPSA(η=η, h=h, e=e, p=p, n=n, trust_region=trust_region)
     end
 
     Serialization.__register__(SPSA)

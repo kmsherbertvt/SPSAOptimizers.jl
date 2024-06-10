@@ -163,6 +163,7 @@ module SecondOrderOptimizers
 
     import ..TrajectoryHessian
     import ..BernoulliDistribution
+    import ..PowerSeries
 
     """
     """
@@ -176,22 +177,23 @@ module SecondOrderOptimizers
     end
 
     function QiskitSPSA2(
-        L::Int,
-        η::Streams.StreamType{Float},
-        h::Streams.StreamType{Float};
+        L::Int;
         sH = nothing,
+        η = nothing,
+        h = nothing,
         e = nothing,
         n = 1,
         trust_region = typemax(Float),
     )
-        d = QiskitSPSA2(
-            sH = isnothing(sH) ? TrajectoryHessian(L) : sH,
-            η = η,
-            h = h,
-            e = isnothing(e) ? BernoulliDistribution(L=L) : e,
-            n = n,
-            trust_region = trust_region,
-        )
+        isnothing(sH) && (sH = TrajectoryHessian(L))
+        isnothing(η) && (η = (0.2, 0.602))
+        isnothing(h) && (h = (0.2, 0.602))
+        isnothing(e) && (e = BernoulliDistribution(L=L))
+
+        η isa Tuple && (η = PowerSeries(a0=η[1], γ=η[2]))
+        h isa Tuple && (h = PowerSeries(a0=h[1], γ=h[2]))
+
+        return QiskitSPSA2(sH, η, h, e, n, trust_region)
     end
 
     Serialization.__register__(SPSA2)
