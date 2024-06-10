@@ -9,10 +9,10 @@ module PowerStreams
 
     """
     """
-    @with_km struct PowerSeries <: Streams.StreamType{Float}
-        a0::F
-        γ::F
-        A::F = zero(Float)
+    @with_kw struct PowerSeries <: Streams.StreamType{Float}
+        a0::Float
+        γ::Float
+        A::Float = zero(Float)
         k::Ref{Int} = Ref(0)
     end
 
@@ -52,6 +52,7 @@ end
 """
 """
 module ConstantStreams
+    import ..Float
     import ..Serialization
     import ..Streams
 

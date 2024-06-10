@@ -5,7 +5,11 @@ module FirstOrderOptimizers
     import ..Serialization
     import ..Optimizers
 
+    import ..Streams
+
     import Parameters: @with_kw
+
+    import LinearAlgebra
 
     import FiniteDifferences: FiniteDifferenceMethod, central_fdm
     import ..ConstantSeries
@@ -20,7 +24,8 @@ module FirstOrderOptimizers
         n::Int = 1
         trust_region::Float = typemax(Float)
 
-        finite_difference = central_fdm(p,1)
+        __cfd_0 = central_fdm(p,0)
+        __cfd_1 = central_fdm(p,1)
     end
 
     Serialization.__register__(SPSA)
@@ -59,42 +64,52 @@ module FirstOrderOptimizers
 
     """
     """
-    function iterate!(
+    function Optimizers.iterate!(
         spsa::SPSA, x, fn;
         nfev::Ref{Int}=Ref(0),
         f::Ref{Float}=Ref(zero(Float)),
         g::Vector{Float}=Vector{Float}(undef, length(x)),
+        p::Vector{Float}=Vector{Float}(undef, length(x)),
+        __xe::Vector{Float}=Vector{Float}(undef, length(x)),
     )
+        f[] = 0
+        g  .= 0
+
         # Stochastically estimate the function and its gradient at this point.
         h = Streams.next!(spsa.h)
-        evaluate!(f, g, x, fn, h, cfd, n)
+        for _ in 1:spsa.n
+            e = Streams.next!(spsa.e)
+
+            for i in 1:spsa.p
+                # PERTURB THE PARAMETERS
+                __xe .= x .+ h .* spsa.__cfd_0.grid[i] .* e
+
+                # EVALUATE THE PERTURBED COST-FUNCTION
+                fe = fn(__xe); nfev[] += 1
+
+                # ESTIMATE THE COST-FUNCTION AND GRADIENT
+                f[] += spsa.__cfd_0.coefs[i] * fe
+                g  .+= spsa.__cfd_1.coefs[i] .* fe .* e ./ h
+            end
+        end
+        f[] /= spsa.n
+        g  ./= spsa.n
+
+        # First-order methods: descent is along gradient.
+        p .= g
 
         # Enforce trust region.
         if spsa.trust_region < typemax(Float)
-            norm = norm(g)
+            norm = LinearAlgebra.norm(p)
             if norm > spsa.trust_region
-                g .*= (spsa.trust_region / norm)
+                p .*= (spsa.trust_region / norm)
             end
         end
 
-        # Update parameter
+        # Update parameters.
         η = Streams.next!(spsa.η)
-        x .-= η .* g
+        x .-= η .* p
 
         return false
     end
-
-    """
-    """
-    function evaluate!(f, g, x, fn, h, cfd, n)
-
-        # This header won't quite work; we need to sample e!
-
-        #= TODO: The fun part. =#
-
-    end
-
-
-
-
 end

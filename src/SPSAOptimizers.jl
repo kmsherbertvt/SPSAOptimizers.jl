@@ -2,19 +2,19 @@ module SPSAOptimizers
     const Float = Float64
 
     include("serialization.jl")
-        import Serialization: serialize, deserialize
+        import .Serialization: serialize, deserialize
 
     include("streams.jl")
-        import Streams: StreamType
+        import .Streams: StreamType
     include("streams/seriesstreams.jl")
-        import PowerStreams: PowerSeries
-        import ConstantStreams: ConstantSeries
+        import .PowerStreams: PowerSeries
+        import .ConstantStreams: ConstantSeries
     include("streams/randomstreams.jl")
-        import RandomStreams: BernoulliDistribution
+        import .RandomStreams: BernoulliDistribution
 
     include("optimizers.jl")
-        import Optimizers: OptimizerType
+        import .Optimizers: OptimizerType
     include("optimizers/firstorder.jl")
-        import FirstOrderOptimzers: SPSA
+        import .FirstOrderOptimizers: SPSA
 
 end

@@ -1,6 +1,7 @@
 """
 """
 module RandomStreams
+    import ..Float
     import ..Serialization
     import ..Streams
 
@@ -11,10 +12,10 @@ module RandomStreams
     """
     """
     @with_kw struct BernoulliDistribution <: Streams.StreamType{Vector{Float}}
-        seed::UInt
         L::Int
         k::Int = L
         p::Float = one(Float)
+        seed::UInt = 0
 
         __vector__::Vector{Float} = Vector{Float}(undef, L)
         __rng__::Random.Xoshiro = Random.Xoshiro(seed)
@@ -23,10 +24,10 @@ module RandomStreams
     Serialization.__register__(BernoulliDistribution)
 
     Serialization.__data__(X::BernoulliDistribution) = (
-        seed = X.seed,
         L = X.L,
         k = X.k,
         p = X.p,
+        seed = X.seed,
         s0 = X.__rng__.s0,
         s1 = X.__rng__.s1,
         s2 = X.__rng__.s2,
@@ -34,10 +35,10 @@ module RandomStreams
     )
 
     Serialization.init(::Type{BernoulliDistribution}, data) = BernoulliDistribution(
-        seed = data.seed,
         L = data.L,
         k = data.k,
         p = data.p,
+        seed = data.seed,
     )
 
     Serialization.load!(X::BernoulliDistribution, data) = (
@@ -73,7 +74,7 @@ module RandomStreams
     function Streams.next!(X::BernoulliDistribution)
         X.__vector__ .= 1
         Random.rand!(X.__rng__, @view(X.__vector__[1:X.k]))
-        X.n < X.L && Random.shuffle!(X.__rng__, X.__vector__)
+        X.k < X.L && Random.shuffle!(X.__rng__, X.__vector__)
         for i in 1:X.L
             X.__vector__[i] = sample(X, X.__vector__[i])
         end

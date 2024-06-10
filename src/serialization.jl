@@ -2,7 +2,7 @@
 """
 module Serialization
     const __REGISTRY__ = Dict{Symbol,Type}()
-    __register__(type::Type) = REGISTRY[Symbol(type)] = type
+    __register__(type::Type) = __REGISTRY__[Symbol(type)] = type
 
     """
     """
