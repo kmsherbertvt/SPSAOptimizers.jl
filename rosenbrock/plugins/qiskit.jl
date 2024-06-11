@@ -47,19 +47,20 @@ module QiskitPlugin
         import qiskit_algorithms as qa
         import qiskit_algorithms.optimizers as qopt
 
-        def tracer(nfevs, xs, fs, Δxs):
+        def tracer(nfevs, xs, fs, Δxs, accepteds):
             def callback(nfev, x, f, Δx, accepted):
                 nfevs.append(nfev)
                 xs.append(x)
                 fs.append(f)
                 Δxs.append(Δx)
+                accepteds.append(accepted)
             return callback
 
         def trajectory(fn, x0, order=1, seed=0, **spsa_kwargs):
             if order == 2: spsa_kwargs["second_order"] = True
 
-            nfevs = []; xs = []; fs = []; Δxs = []
-            callback = tracer(nfevs, xs, fs, Δxs)
+            nfevs = []; xs = []; fs = []; Δxs = []; accepteds = []
+            callback = tracer(nfevs, xs, fs, Δxs, accepteds)
 
             qa.utils.algorithm_globals.random_seed = seed
             spsa = qopt.SPSA(
@@ -68,7 +69,7 @@ module QiskitPlugin
             )
             spsa.minimize(fn, x0)
 
-            return nfevs, xs, fs, Δxs
+            return nfevs, xs, fs, Δxs, accepteds, spsa._smoothed_hessian
 
         def calibrate(fn, x0, **kwargs):
             return qopt.SPSA.calibrate(fn, x0, **kwargs)
@@ -77,13 +78,16 @@ module QiskitPlugin
     end
 
     function trajectory(fn, x0; order=1, seed=0, options...)
-        nfevs, xs, fs, Δxs = py"trajectory"(fn, x0; order=order, seed=seed, options...)
+        nfevs, xs, fs, Δxs, accepteds, H =
+                py"trajectory"(fn, x0; order=order, seed=seed, options...)
         return (
             nfev = [0; nfevs],
             x = [x0[1]; [xi[1] for xi in xs]],
             y = [x0[2]; [xi[2] for xi in xs]],
             f = [fn(x0); fs],
             g = [0.0; Δxs],
+            H = H,
+            accepteds = accepteds,
         )
     end
 
