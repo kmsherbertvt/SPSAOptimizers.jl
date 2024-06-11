@@ -12,6 +12,7 @@ module ConvergencePlots
             ylims = log ? [1e-8, 1e2] : [0.0, 2.0],
             yticks = log ? 10.0 .^ (-8:2:2) : 0.0:0.2:2.0,
             yscale = log ? :log10 : :linear,
+            kwargs...,
         )
 
         nfev || return plt

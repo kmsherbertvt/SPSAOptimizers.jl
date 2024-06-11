@@ -9,99 +9,145 @@ include("plotting/convergence.jl"); import .ConvergencePlots
 include("plotting/cost.jl"); import .CostPlots
 include("plotting/trajectory.jl"); import .TrajectoryPlots
 
-##########################################################################################
+# LOAD COST-FUNCTIONS
+include("functions/rosenbrock.jl"); import .Rosenbrock
+fn = Rosenbrock.lossfunction()
+gd = Rosenbrock.gradient()
+hs = Rosenbrock.hessian()
 
-# PREP THE SYSTEM
-function rosenbrock(a=1.0, b=100.0)
-    return params -> (
-        (x, y) = params;
-        (a - x)^2 + b * (y - x^2)^2
-    )
-end
-
-function rosenbrock_gradient(a=1.0, b=100.0)
-    return params -> (
-        (x, y) = params;
-        [
-            -2(a - x) - 4b * (y - x^2) * x,
-            2b * (y - x^2),
-        ]
-    )
-end
-
-function rosenbrock_hessian(a=1.0, b=100.0)
-    return params -> (
-        (x, y) = params;
-        [
-            2 - 4b * (y - 3x^2)         -4b*x
-            -4b * x                     2b
-        ]
-    )
-end
-
-fn = rosenbrock()
 x0 = zeros(2)
 
-gd = rosenbrock_gradient()
-hs = rosenbrock_hessian()
+import LinearAlgebra
 
 ##########################################################################################
 
-# RUN THE OPTIM OPTIMIZATION
-
-# optim = OptimPlugin.trajectory(fn, x0)
-# bfgs = OptimPlugin.trajectory(fn, x0; order=:bfgs)
-# newton = OptimPlugin.trajectory(fn, x0; order=2)
-
-# RUN THE QISKIT OPTIMIZATION
-
-η, h = QiskitPlugin.calibrate(
-    fn, x0,
-    target_magnitude = 0.2,
-    alpha = 0.101,
+curves = Dict{String,Any}()
+register!(label, data; plot=true, kwargs...) = (
+    curves[label] = (data=data, label=label, plot=plot, kwargs=kwargs)
 )
 
-# begin
-#     eta = η(); eps = h();
-#     plt = Plots.plot();
-#     Plots.plot!(plt, [eta.__next__() for i in 1:200], label="eta")
-#     Plots.plot!(plt, [eps.__next__() for i in 1:200], label="eps")
-#     Plots.gui(plt)
-# end
+##########################################################################################
 
+# register!(
+#     "Gradient Descent",
+#     OptimPlugin.trajectory(fn, x0; order=1);
+#     color = :bronze,
+#     plot = false,
+# )
 
+# register!(
+#     "BFGS",
+#     OptimPlugin.trajectory(fn, x0; order=1.5);
+#     color = :gold,
+#     # plot = false,
+# )
 
-qiskit_1 = QiskitPlugin.trajectory(fn, x0;
-    learning_rate = η,
-    perturbation = h,
-    trust_region = true,
+# register!(
+#     "Newton",
+#     OptimPlugin.trajectory(fn, x0; order=2);
+#     color = :silver,
+#     # plot = false,
+# )
+
+##########################################################################################
+
+K = 100
+
+function calibrated_generator(x0, α, A; Δx=nothing)
+    # If Δx is not provided, default to η[0]=1.0.
+    isnothing(Δx) && return QiskitPlugin.wrapped_powerseries((A+1)^α, α, A)
+
+    # Otherwise, follow Spall's calibration protocol, implemented in qiskit.
+    g0 = gd(x0);
+    QiskitPlugin.wrapped_powerseries(Δx/LinearAlgebra.norm(g0) * (A+1)^α, α, A)
+end
+η1 = calibrated_generator(x0, 0.602, K/10.0)
+η2 = calibrated_generator(x0, 0.602, K/10.0)
+h = QiskitPlugin.wrapped_powerseries(0.1, 0.101)
+
+register!(
+    "Qiskit 1SPSA",
+    QiskitPlugin.trajectory(fn, x0;
+        # order = 2,
+        maxiter = K,
+        learning_rate = η1,
+        perturbation = h,
+        trust_region = true,
+        # hessian_delay = K,  # so, trajectory is that of order=1
+    );
+    color = :green,
+    # plot = false,
 )
 
-qiskit_2 = QiskitPlugin.trajectory(fn, x0;
-    order = 2,
-    learning_rate = η,
-    perturbation = h,
-    # blocking=true,
-    # resamplings = 4,
-    # trust_region = true,
-    # hessian_delay = 4,
-    # initial_hessian = nothing, # TODO
+xr1 = curves["Qiskit 1SPSA"].data.x[end,:]
+ηr1 = calibrated_generator(xr1, 0.602, K/10.0)
+# Hr1 = curves["Qiskit 1SPSA"].data.optimizer._smoothed_hessian
+
+register!(
+    "Qiskit 2SPSA",
+    QiskitPlugin.trajectory(fn, x0;
+        order = 2,
+        maxiter = K,
+        learning_rate = η2,
+        perturbation = h,
+        blocking = true,
+    );
+    color = :blue,
+    # plot = false,
 )
 
-xr = [last(qiskit_1.x), last(qiskit_1.y)]
-ηr, hr = QiskitPlugin.calibrate(
-    fn, xr,
-    target_magnitude = 0.2,
-    alpha = 0.101,
+xr2 = curves["Qiskit 2SPSA"].data.x[end,:]
+ηr2 = calibrated_generator(xr2, 0.602, K/10.0)
+Hr2 = curves["Qiskit 2SPSA"].data.optimizer._smoothed_hessian
+
+##########################################################################################
+
+register!(
+    "Qiskit 2SPSA (From 1SPSA)",
+    QiskitPlugin.trajectory(fn, xr1;
+        order = 2,
+        maxiter = K,
+        learning_rate = ηr1,
+        perturbation = h,
+        # initial_hessian = Hr1,
+        blocking = true,
+    );
+    color = :teal,
+    # plot = false,
 )
-qiskit_r = QiskitPlugin.trajectory(fn, xr;
-    order = 2,
-    learning_rate = ηr,
-    perturbation = hr,
-    # blocking=true,
-    # resamplings = 2,
-    # initial_hessian = qiskit_2.H,
+
+register!(
+    "Qiskit 2SPSA (From 2SPSA)",
+    QiskitPlugin.trajectory(fn, xr2;
+        order = 2,
+        maxiter = K,
+        learning_rate = ηr2,
+        perturbation = h,
+        initial_hessian = Hr2,
+        blocking = true,
+    );
+    color = :cyan,
+    # plot = false,
 )
+
+##########################################################################################
+
+# spsa_1 = SPSAPlugin.trajectory(fn, x0;
+#     η = (η0, 0.602),
+#     h = (h0, 0.101),
+#     p = 3,
+#     trust_region=1.0,
+# )
+
+# spsa_2 = SPSAPlugin.trajectory(fn, x0;
+#     order = 2,
+#     η = (η0, 0.602),
+#     h = (h0, 0.101),
+#     p = 3,
+#     trust_region=1.0,
+# )
+
+##########################################################################################
 
 #=
 
@@ -154,62 +200,34 @@ I think the next step is nothing more nor less than reading the papers to unders
 =#
 
 
-η0 = η().__next__()
-h0 = h().__next__()
-
-ηr0 = ηr().__next__()
-hr0 = hr().__next__()
 
 # RUN THE SPSA OPTIMIZATION
 
-# spsa_1 = SPSAPlugin.trajectory(fn, x0;
-#     η = (η0, 0.602),
-#     h = (h0, 0.101),
-#     p = 3,
-#     trust_region=1.0,
-# )
-
-# spsa_2 = SPSAPlugin.trajectory(fn, x0;
-#     order = 2,
-#     η = (η0, 0.602),
-#     h = (h0, 0.101),
-#     p = 3,
-#     trust_region=1.0,
-# )
 
 ##########################################################################################
 
 fig_dir = "rosenbrock/fig"
 
 # MAKE THE CONVERGENCE PLOTS
-convergence = ConvergencePlots.init(; log=false, nfev=false)
-# ConvergencePlots.add!(convergence, bfgs; color=:cyan, label="BFGS")
-# ConvergencePlots.add!(convergence, newton; color=:orange, label="Newton")
-# ConvergencePlots.add!(convergence, spsa_1; color=:red, label="SPSA (1)")
-ConvergencePlots.add!(convergence, qiskit_1; color=:purple, label="Qiskit (1)")
-ConvergencePlots.add!(convergence, qiskit_2; color=:gold, label="Qiskit (2)")
-ConvergencePlots.add!(convergence, qiskit_r; color=:silver, label="Qiskit (r)")
+convergence = ConvergencePlots.init(; log=true, nfev=false)
+for (label, curve) in pairs(curves)
+    curve.plot || continue
+    ConvergencePlots.add!(convergence, curve.data; label=label, curve.kwargs...)
+end
 Plots.savefig(convergence, "$fig_dir/methods.convergence.pdf")
 
 # MAKE THE COST PLOTS
-cost = CostPlots.init(; log=false)
-# CostPlots.add!(cost, bfgs; color=:cyan, label="BFGS")
-# CostPlots.add!(cost, newton; color=:orange, label="Newton")
-# CostPlots.add!(cost, spsa_1; color=:red, label="SPSA (1)")
-CostPlots.add!(cost, qiskit_1; color=:purple, label="Qiskit (1)")
-CostPlots.add!(cost, qiskit_2; color=:gold, label="Qiskit (2)")
-CostPlots.add!(cost, qiskit_r; color=:silver, label="Qiskit (r)")
+cost = CostPlots.init(; log=true)
+for (label, curve) in pairs(curves)
+    curve.plot || continue
+    CostPlots.add!(cost, curve.data; label=label, curve.kwargs...)
+end
 Plots.savefig(cost, "$fig_dir/methods.cost.pdf")
 
 # MAKE THE COST PLOTS
-trajectory = TrajectoryPlots.init(fn;
-    # xlims=(min(minimum(qiskit.x),minimum(spsa.x)),max(maximum(qiskit.x),maximum(spsa.x))),
-    # ylims=(min(minimum(qiskit.y),minimum(spsa.y)),max(maximum(qiskit.y),maximum(spsa.y))),
-)
-# TrajectoryPlots.add!(trajectory, bfgs; color=:cyan, label="BFGS")
-# TrajectoryPlots.add!(trajectory, newton; color=:orange, label="Newton")
-# TrajectoryPlots.add!(trajectory, spsa_1; color=:red, label="SPSA (1)")
-TrajectoryPlots.add!(trajectory, qiskit_1; color=:purple, label="Qiskit (1)")
-TrajectoryPlots.add!(trajectory, qiskit_2; color=:gold, label="Qiskit (2)")
-TrajectoryPlots.add!(trajectory, qiskit_r; color=:silver, label="Qiskit (r)")
+trajectory = TrajectoryPlots.init(fn; )
+for (label, curve) in pairs(curves)
+    curve.plot || continue
+    TrajectoryPlots.add!(trajectory, curve.data; label=label, curve.kwargs...)
+end
 Plots.savefig(trajectory, "$fig_dir/methods.trajectory.pdf")

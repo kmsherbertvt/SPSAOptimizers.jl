@@ -37,14 +37,14 @@ module OptimPlugin
         callback = tracer(f_counter, nfevs, xs, fs, Δxs)
 
         options = Optim.Options(kwargs..., extended_trace=true, callback=callback)
-        optimize(counted_fn, x0, optimizer, options)
+        result = optimize(counted_fn, x0, optimizer, options)
 
         return (
             nfev = [0; nfevs],
-            x = [x0[1]; [xi[1] for xi in xs]],
-            y = [x0[2]; [xi[2] for xi in xs]],
+            x = transpose(reduce(hcat, [[x0]; xs])),
             f = [fn(x0); fs],
             g = [0.0; Δxs],
+            result = result,
         )
     end
 

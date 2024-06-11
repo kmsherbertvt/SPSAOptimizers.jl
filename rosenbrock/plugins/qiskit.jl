@@ -67,30 +67,38 @@ module QiskitPlugin
                 **spsa_kwargs,
                 callback=callback,
             )
-            spsa.minimize(fn, x0)
+            result = spsa.minimize(fn, x0)
 
-            return nfevs, xs, fs, Δxs, accepteds, spsa._smoothed_hessian
+            return nfevs, xs, fs, Δxs, accepteds, spsa, result
 
         def calibrate(fn, x0, **kwargs):
             return qopt.SPSA.calibrate(fn, x0, **kwargs)
+        def powerseries(eta=0.01, power=2, offset=0):
+            return qopt.spsa.powerseries(eta=eta, power=power, offset=offset)
+        def wrapped_powerseries(eta=0.01, power=2, offset=0):
+            def wrapper():
+                return powerseries(eta=eta, power=power, offset=offset)
+            return wrapper
 
         """
     end
 
     function trajectory(fn, x0; order=1, seed=0, options...)
-        nfevs, xs, fs, Δxs, accepteds, H =
+        nfevs, xs, fs, Δxs, accepteds, optimizer, result =
                 py"trajectory"(fn, x0; order=order, seed=seed, options...)
         return (
             nfev = [0; nfevs],
-            x = [x0[1]; [xi[1] for xi in xs]],
-            y = [x0[2]; [xi[2] for xi in xs]],
+            x = transpose(reduce(hcat, [[x0]; xs])),
             f = [fn(x0); fs],
             g = [0.0; Δxs],
-            H = H,
             accepteds = accepteds,
+            optimizer = optimizer,
+            result = result,
         )
     end
 
     calibrate(args...; kwargs...) = py"calibrate"(args...; kwargs...)
+    powerseries(args...; kwargs...) = py"powerseries"(args...; kwargs...)
+    wrapped_powerseries(args...; kwargs...) = py"wrapped_powerseries"(args...; kwargs...)
 
 end

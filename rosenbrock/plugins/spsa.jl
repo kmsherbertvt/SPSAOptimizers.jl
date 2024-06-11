@@ -39,10 +39,10 @@ module SPSAPlugin
 
         return (
             nfev = [0; nfevs],
-            x = [x0[1]; [xi[1] for xi in xs]],
-            y = [x0[2]; [xi[2] for xi in xs]],
+            x = transpose(reduce(hcat, [[x0]; xs])),
             f = [fn(x0); fs],
             g = [0.0; Δxs],
+            optimizer = optimizer,
         )
     end
 

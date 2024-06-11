@@ -29,6 +29,7 @@ This package is written with the following goals in mind:
 
 ## References
 1. [J. C. Spall (1998). An Overview of the Simultaneous Perturbation Method for Efficient Optimization, Johns Hopkins APL Technical Digest, 19(4), 482–492.](https://www.jhuapl.edu/SPSA/PDF-SPSA/Spall_An_Overview.PDF)
+2. [J. C. Spall (1998). Implementation of the Simultaneous Perturbation Algorithm for Stochastic Optimization, Johns Hopkins APL Technical Digest, 34(3), 817-823.](https://www.jhuapl.edu/spsa/PDF-SPSA/Spall_Implementation_of_the_Simultaneous.PDF)
 2. [J. C. Spall (1997). A One-Measurement Form of Simultaneous Perturbation Stochastic Approximation, Automatica 33, 109–112.](https://doi.org/10.1016/S0005-1098(96)00149-5)
 3. [J. C. Spall (1997). Accelerated second-order stochastic optimization using only function measurements, Proceedings of the 36th IEEE Conference on Decision and Control, 1417-1424 vol.2.](https://ieeexplore.ieee.org/document/657661)
 

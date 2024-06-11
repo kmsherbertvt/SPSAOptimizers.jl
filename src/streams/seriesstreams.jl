@@ -1,4 +1,19 @@
 """
+
+Guidelines for selecting gain sequences:
+
+Let η[k] = η0 / (A + k + 1)^α
+    h[k] = h0 / (k + 1)^γ
+
+- Asymptotically optimal: α=1, γ=1/6
+- Lowest allowable for theoretical convergence: α=0.602, γ=0.101
+- Empirically, the smaller the better, but maybe for large problems one should transition to the larger.
+
+- Set h0 to the standard deviation of the noise in f.
+- Set A to 10% of the maximum number of iterations.
+- Set a0 such that a[0] * |g(x0)| gives a desirable "change in magnitude" of x.
+
+
 """
 module PowerStreams
     import ..Float
@@ -11,10 +26,14 @@ module PowerStreams
     """
     @with_kw struct PowerSeries <: Streams.StreamType{Float}
         a0::Float
-        γ::Float
+        γ::Float = one(Float)
         A::Float = zero(Float)
         k::Ref{Int} = Ref(0)
     end
+
+    PowerSeries(a0::Float) = PowerSeries(a0=a0)
+    PowerSeries(a0::Float, γ::Float) = PowerSeries(a0=a0, γ=γ)
+    PowerSeries(a0::Float, γ::Float, A::Float) = PowerSeries(a0=a0, γ=γ, A=A)
 
     Serialization.__register__(PowerSeries)
 

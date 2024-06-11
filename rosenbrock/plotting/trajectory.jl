@@ -1,5 +1,8 @@
 """
 Show trajectories in parameter space.
+
+It shouldn't throw an error, but the plot probably only makes sense for N=2 parameters.
+
 """
 module TrajectoryPlots
     using Plots
@@ -20,7 +23,7 @@ module TrajectoryPlots
     end
 
     function add!(plt, data; kwargs...)
-        plot!(plt, data.x, data.y;
+        plot!(plt, data.x[:,1], data.x[:,2];
             markershape=:circle, markerstrokewidth=0, linewidth = 2, label=false,
             kwargs...,
         )
