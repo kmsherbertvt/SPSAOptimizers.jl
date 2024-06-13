@@ -39,7 +39,7 @@ function do_1SPSA(FN, x0, K, P; trace=Trace())
     η = learning_rate(0.05, 0.602, K/10.0)
     h = SPSAOptimizers.PowerSeries(0.1, 0.101)
     e = SPSAOptimizers.BernoulliDistribution(L=L, p=1.0)
-    n = SPSAOptimizers.IntDictStream(default=1)
+    n = SPSAOptimizers.IntDictStream(default=2)
     optimizer = SPSAOptimizers.SPSA1(L; P=P, η=η, h=h, e=e, n=n)
     return SPSAOptimizers.optimize!(
         optimizer, FN.fn, x0;
@@ -134,11 +134,11 @@ prefix = "P_1SPSA"
 
 cvg_RB = ConvergencePlots.init(; log=false, nfev=false)
 cst_RB = CostPlots.init(; log=false)
-trj_RB = TrajectoryPlots.init(RB_FN; )
+trj_RB = TrajectoryPlots.init(RB.fn; )
 
 cvg_PQ = ConvergencePlots.init(; log=true, nfev=false)
 cst_PQ = CostPlots.init(; log=true)
-trj_PQ = TrajectoryPlots.init(PQ_FN; )
+trj_PQ = TrajectoryPlots.init(PQ.fn; )
 
 for label in sort(collect(keys(curves)))
     add_plots!(cvg_RB, cvg_PQ, ConvergencePlots, curves[label])

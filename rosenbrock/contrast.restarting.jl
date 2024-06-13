@@ -50,7 +50,7 @@ end
 
 function LL_strategy(FN, x0, K; trace=Trace())
     L = length(x0)
-    η = learning_rate(1.0, 0.602, K/10.0)
+    η = learning_rate(0.1, 0.602, K/10.0)
     h = SPSAOptimizers.PowerSeries(0.1, 0.101)
     n = SPSAOptimizers.IntDictStream(dict=Dict(k=>L for k in 1:L), default=1)
     optimizer = SPSAOptimizers.SPSA2(L; η=η, h=h, n=n)
@@ -65,10 +65,11 @@ end
 
 function H0_strategy(FN, x0, K; trace=Trace())
     L = length(x0)
-    η = learning_rate(1.0, 0.602, K/10.0)
+    η = learning_rate(0.1, 0.602, K/10.0)
     h = SPSAOptimizers.PowerSeries(0.1, 0.101)
+    n = SPSAOptimizers.IntDictStream(default=1)
     H = SPSAOptimizers.TrajectoryHessian(L); H.H .= FN.hs(x0); H.k[] = L^2
-    optimizer = SPSAOptimizers.SPSA2(L; H=H, η=η, h=h)
+    optimizer = SPSAOptimizers.SPSA2(L; H=H, η=η, h=h, n=n)
     return SPSAOptimizers.optimize!(
         optimizer, FN.fn, x0;
         maxiter = K,
@@ -100,7 +101,7 @@ end
 
 function warmup_strategy(FN, x0, K; trace=Trace())
     L = length(x0)
-    η = learning_rate(1.0, 0.602, K/10.0)
+    η = learning_rate(0.05, 0.602, K/10.0)
     h = SPSAOptimizers.PowerSeries(0.1, 0.101)
     warmup_optimizer = SPSAOptimizers.SPSA2(L; η=η, h=h)
     record = SPSAOptimizers.optimize!(
@@ -112,10 +113,11 @@ function warmup_strategy(FN, x0, K; trace=Trace())
         tracefields = (:nfev, :fp, :xp, :g),
     )
 
-    η = learning_rate(1.0, 0.602, K/10.0)
+    η = learning_rate(0.1, 0.602, K/10.0)
     h = SPSAOptimizers.PowerSeries(0.1, 0.101)
+    n = SPSAOptimizers.IntDictStream(default=1)
     H = deepcopy(warmup_optimizer.H)
-    optimizer = SPSAOptimizers.SPSA2(L; H=H, η=η, h=h)
+    optimizer = SPSAOptimizers.SPSA2(L; H=H, η=η, h=h, n=n)
     return SPSAOptimizers.optimize!(
         optimizer, FN.fn, x0;
         maxiter = K,
@@ -206,15 +208,15 @@ function add_plots!(RB, PQ, Plotter, curve)
 end
 
 dir = "rosenbrock/fig"
-prefix = "resampling"
+prefix = "restarting"
 
 cvg_RB = ConvergencePlots.init(; log=false, nfev=false)
 cst_RB = CostPlots.init(; log=false)
-trj_RB = TrajectoryPlots.init(RB_FN; )
+trj_RB = TrajectoryPlots.init(RB.fn; )
 
 cvg_PQ = ConvergencePlots.init(; log=true, nfev=false)
 cst_PQ = CostPlots.init(; log=true)
-trj_PQ = TrajectoryPlots.init(PQ_FN; )
+trj_PQ = TrajectoryPlots.init(PQ.fn; )
 
 for (label, curve) in pairs(curves)
     add_plots!(cvg_RB, cvg_PQ, ConvergencePlots, curve)

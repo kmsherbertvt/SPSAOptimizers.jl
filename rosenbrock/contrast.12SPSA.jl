@@ -1,3 +1,8 @@
+#= Given a fixed budget M, and a fixed resamplings `n`,
+    1SPSA can use K = M/2n while 2SPSA can use K = M/4n.
+Which is better, and how does it change with n, and with the function?
+=#
+
 const Float = Float64
 # LOAD THE OPTIMIZATION ROUTINES
 import SPSAOptimizers
@@ -36,8 +41,9 @@ learning_rate(η0, α, A) = SPSAOptimizers.PowerSeries(η0 * (A+1)^α, α, A)
 
 function do_1SPSA(FN, x0, K, n; trace=Trace())
     L = length(x0)
-    η = learning_rate(0.05, 0.602, K/10.0)
-    h = SPSAOptimizers.PowerSeries(0.1, 0.101)
+    # η = learning_rate(0.05, 0.602, K/10.0)
+    η = learning_rate(0.1, 1.0, K/10.0)
+    h = SPSAOptimizers.PowerSeries(0.1, 1/6)
     e = SPSAOptimizers.BernoulliDistribution(L=L, p=1.0)
     n_= SPSAOptimizers.IntDictStream(default=n)
     optimizer = SPSAOptimizers.SPSA1(L; η=η, h=h, e=e, n=n_)
@@ -51,15 +57,37 @@ function do_1SPSA(FN, x0, K, n; trace=Trace())
     )
 end
 
+function do_2SPSA(FN, x0, K, n; trace=Trace())
+    L = length(x0)
+    η = learning_rate(1.0, 1.0, K/10.0)
+    # η = SPSAOptimizers.PowerSeries(120.0, 1.0, K/10.0)
+    h = SPSAOptimizers.PowerSeries(0.1, 1/6)
+    e = SPSAOptimizers.BernoulliDistribution(L=L, p=1.0)
+    n_= SPSAOptimizers.IntDictStream(default=n)
+    optimizer = SPSAOptimizers.SPSA2(L; η=η, h=h, e=e, n=n_)
+    return SPSAOptimizers.optimize!(
+        optimizer, FN.fn, x0;
+        maxiter = K,
+        # trust = 1.0,
+        tolerance = 0.0,
+        trace = trace,
+        tracefields = (:nfev, :fp, :xp, :g),
+    )
+end
+
 
 ##########################################################################################
 #= STANDARDIZE A TRAJECTORY/PLOT INTERFACE =#
 
 curves = Dict{Float,Any}()
 
-data(FN, L, M, n) = (
+data(FN, L, M, n, o) = (
     trace = Trace();
-    do_1SPSA(FN, zeros(L), M÷2n, n; trace=trace);
+    if o == 1;
+        do_1SPSA(FN, zeros(L), M÷2n, n; trace=trace);
+    else;
+        do_2SPSA(FN, zeros(L), M÷4n, n; trace=trace);
+    end;
     data_from_trace(trace)
 )
 
@@ -69,10 +97,10 @@ function register!(n, plot_options; plot=true)
         n = n,
         plot_options = plot_options,
         plot = plot,
-        # RB_l = data(RB,  2, 2000, n),
-        RB_L = data(RB, 20, 50000, n),
-        # PQ_l = data(PQ,  2, 2000, n),
-        # PQ_L = data(PQ, 20, 50000, n),
+        RB_1 = data(RB, 20, 20000, n, 1),
+        RB_2 = data(RB, 20, 20000, n, 2),
+        PQ_1 = data(PQ, 20, 20000, n, 1),
+        PQ_2 = data(PQ, 20, 20000, n, 2),
     )
 end
 
@@ -86,11 +114,7 @@ register!(4, (color = 3,))
 register!(8, (color = 4,))
 register!(16, (color = 5,))
 register!(32, (color = 6,))
-# register!(64, (color = 7,))
-# register!(128, (color = 8,))
-# register!(256, (color = 9,))
-# register!(512, (color = 10,))
-# register!(1024, (color = 11,))
+register!(64, (color = 7,))
 
 ##########################################################################################
 #= PLOT THE DATA =#
@@ -100,48 +124,46 @@ DEFAULT_PLOT = (
     seriesalpha = 0.6,
     linewidth = 2,
 )
-l_PLOT = (
+PLOT_1 = (
     markershape = :circle,
     linestyle = :dot,
 )
-L_PLOT = (
+PLOT_2 = (
     markershape = :star,
     linestyle = :solid,
 )
 
 function add_plots!(RB, PQ, Plotter, curve)
-    # Plotter.add!(RB, curve.RB_l;
-    #     DEFAULT_PLOT..., l_PLOT...,
-    #     label=false,
-    #     curve.plot_options...,
-    # )
+    Plotter.add!(RB, curve.RB_1;
+        DEFAULT_PLOT..., PLOT_1...,
+        label=false,
+        curve.plot_options...,
+    )
 
-    Plotter.add!(
-        RB, curve.RB_L;
-        DEFAULT_PLOT..., L_PLOT...,
+    Plotter.add!(RB, curve.RB_2;
+        DEFAULT_PLOT..., PLOT_2...,
         label=curve.label,
         curve.plot_options...,
     )
 
-    # Plotter.add!(PQ, curve.PQ_l;
-    #     DEFAULT_PLOT..., l_PLOT...,
-    #     label=false,
-    #     curve.plot_options...,
-    # )
+    Plotter.add!(PQ, curve.PQ_1;
+        DEFAULT_PLOT..., PLOT_1...,
+        label=false,
+        curve.plot_options...,
+    )
 
-    # Plotter.add!(
-    #     PQ, curve.PQ_L;
-    #     DEFAULT_PLOT..., L_PLOT...,
-    #     label=curve.label,
-    #     curve.plot_options...,
-    # )
+    Plotter.add!(PQ, curve.PQ_2;
+        DEFAULT_PLOT..., PLOT_2...,
+        label=curve.label,
+        curve.plot_options...,
+    )
 end
 
 dir = "rosenbrock/fig"
-prefix = "n_1SPSA"
+prefix = "12SPSA"
 
-cvg_RB = ConvergencePlots.init(; log=false, nfev=false, ylims=[0.0,1.1], yticks=:auto)
-cst_RB = CostPlots.init(; log=false, ylims=[0.0,1.1], yticks=:auto)
+cvg_RB = ConvergencePlots.init(; log=false, nfev=false, ylims=[0.5,1.1], yticks=:auto)
+cst_RB = CostPlots.init(; log=false, ylims=[0.5,1.1], yticks=:auto)
 trj_RB = TrajectoryPlots.init(RB.fn; )
 
 cvg_PQ = ConvergencePlots.init(; log=true, nfev=false)

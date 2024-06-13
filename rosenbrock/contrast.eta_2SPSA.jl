@@ -34,17 +34,17 @@ include("functions/rosenbrock.jl");
 
 learning_rate(η0, α, A) = SPSAOptimizers.PowerSeries(η0 * (A+1)^α, α, A)
 
-function do_1SPSA(FN, x0, K, n; trace=Trace())
+function do_2SPSA(FN, x0, K, η0; trace=Trace())
     L = length(x0)
-    η = learning_rate(0.05, 0.602, K/10.0)
+    η = learning_rate(η0, 0.602, K/10.0)
     h = SPSAOptimizers.PowerSeries(0.1, 0.101)
     e = SPSAOptimizers.BernoulliDistribution(L=L, p=1.0)
-    n_= SPSAOptimizers.IntDictStream(default=n)
-    optimizer = SPSAOptimizers.SPSA1(L; η=η, h=h, e=e, n=n_)
+    n = SPSAOptimizers.IntDictStream(default=2)
+    optimizer = SPSAOptimizers.SPSA2(L; η=η, h=h, e=e, n=n)
     return SPSAOptimizers.optimize!(
         optimizer, FN.fn, x0;
         maxiter = K,
-        trust = 1.0,
+        # trust = 1.0,
         tolerance = 0.0,
         trace = trace,
         tracefields = (:nfev, :fp, :xp, :g),
@@ -57,22 +57,22 @@ end
 
 curves = Dict{Float,Any}()
 
-data(FN, L, M, n) = (
+data(FN, L, K, η0) = (
     trace = Trace();
-    do_1SPSA(FN, zeros(L), M÷2n, n; trace=trace);
+    do_2SPSA(FN, zeros(L), K, η0; trace=trace);
     data_from_trace(trace)
 )
 
-function register!(n, plot_options; plot=true)
-    curves[n] = (
-        label = "n=$n",
-        n = n,
+function register!(η0, plot_options; plot=true)
+    curves[η0] = (
+        label = "η0=$η0",
+        η0 = η0,
         plot_options = plot_options,
         plot = plot,
-        # RB_l = data(RB,  2, 2000, n),
-        RB_L = data(RB, 20, 50000, n),
-        # PQ_l = data(PQ,  2, 2000, n),
-        # PQ_L = data(PQ, 20, 50000, n),
+        RB_l = data(RB,  2, 100, η0),
+        RB_L = data(RB, 20, 1000, η0),
+        PQ_l = data(PQ,  2, 100, η0),
+        PQ_L = data(PQ, 20, 1000, η0),
     )
 end
 
@@ -80,17 +80,11 @@ end
 ##########################################################################################
 #= REGISTER SOME CURVES =#
 
-register!(1, (color = 1,))
-register!(2, (color = 2,))
-register!(4, (color = 3,))
-register!(8, (color = 4,))
-register!(16, (color = 5,))
-register!(32, (color = 6,))
-# register!(64, (color = 7,))
-# register!(128, (color = 8,))
-# register!(256, (color = 9,))
-# register!(512, (color = 10,))
-# register!(1024, (color = 11,))
+register!(0.01, (color = 1,))
+register!(0.05, (color = 2,))
+register!(0.1, (color = 3,))
+register!(0.5, (color = 4,))
+register!(1.0, (color = 5,))
 
 ##########################################################################################
 #= PLOT THE DATA =#
@@ -110,38 +104,38 @@ L_PLOT = (
 )
 
 function add_plots!(RB, PQ, Plotter, curve)
-    # Plotter.add!(RB, curve.RB_l;
-    #     DEFAULT_PLOT..., l_PLOT...,
-    #     label=false,
-    #     curve.plot_options...,
-    # )
-
-    Plotter.add!(
-        RB, curve.RB_L;
-        DEFAULT_PLOT..., L_PLOT...,
+    Plotter.add!(RB, curve.RB_l;
+        DEFAULT_PLOT..., l_PLOT...,
         label=curve.label,
         curve.plot_options...,
     )
 
-    # Plotter.add!(PQ, curve.PQ_l;
-    #     DEFAULT_PLOT..., l_PLOT...,
-    #     label=false,
-    #     curve.plot_options...,
-    # )
+    Plotter.add!(
+        RB, curve.RB_L;
+        DEFAULT_PLOT..., L_PLOT...,
+        label=false,
+        curve.plot_options...,
+    )
 
-    # Plotter.add!(
-    #     PQ, curve.PQ_L;
-    #     DEFAULT_PLOT..., L_PLOT...,
-    #     label=curve.label,
-    #     curve.plot_options...,
-    # )
+    Plotter.add!(PQ, curve.PQ_l;
+        DEFAULT_PLOT..., l_PLOT...,
+        label=curve.label,
+        curve.plot_options...,
+    )
+
+    Plotter.add!(
+        PQ, curve.PQ_L;
+        DEFAULT_PLOT..., L_PLOT...,
+        label=false,
+        curve.plot_options...,
+    )
 end
 
 dir = "rosenbrock/fig"
-prefix = "n_1SPSA"
+prefix = "eta_2SPSA"
 
-cvg_RB = ConvergencePlots.init(; log=false, nfev=false, ylims=[0.0,1.1], yticks=:auto)
-cst_RB = CostPlots.init(; log=false, ylims=[0.0,1.1], yticks=:auto)
+cvg_RB = ConvergencePlots.init(; log=false, nfev=false)
+cst_RB = CostPlots.init(; log=false)
 trj_RB = TrajectoryPlots.init(RB.fn; )
 
 cvg_PQ = ConvergencePlots.init(; log=true, nfev=false)
