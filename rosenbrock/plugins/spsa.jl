@@ -42,4 +42,13 @@ module SPSAPlugin
 
     end
 
+    function data_from_trace(trace)
+        return (
+            nfev = SPSAOptimizers.trajectory(trace, :nfev),
+            x = transpose(SPSAOptimizers.trajectory(trace, :xp)),
+            f = SPSAOptimizers.trajectory(trace, :fp),
+            g = LinearAlgebra.norm.(SPSAOptimizers.trajectory(trace, :g)),
+        )
+    end
+
 end

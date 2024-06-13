@@ -45,7 +45,7 @@ module FirstOrderOptimizers
         trust = typemax(F),
         tolerance = typemax(F),
         # OUTPUT
-        record = Record(length(x0), optimizer),
+        record = Optimizers.Record(optimizer, length(x0)),
         average_last = nothing,
         trace = nothing,
         tracefields = (:f, :fp, :nfev, :time, :bytes),
@@ -66,7 +66,7 @@ module FirstOrderOptimizers
 
         # ALLOCATE SPACE FOR THE LAST `average_last` RUNS
         if !isnothing(average_last)
-            recents = [Record(length(x0), optimizer) for _ in 1:average_last]
+            recents = [Optimizers.Record(optimizer, length(x0)) for _ in 1:average_last]
             cursor = 0      # Last index set.
             filled = false  # Whether or not all records have been set once.
         end

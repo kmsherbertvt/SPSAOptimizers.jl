@@ -23,20 +23,6 @@ include("functions/rosenbrock.jl");
 ##########################################################################################
 #= STANDARDIZE A TRAJECTORY/PLOT INTERFACE =#
 
-DEFAULT_PLOT = (
-    markerstrokewidth = 0,
-    seriesalpha = 0.6,
-    linewidth = 2,
-)
-PYTHON_PLOT = (
-    markershape = :circle,
-    linestyle = :dot,
-)
-JULIA_PLOT = (
-    markershape = :star,
-    linestyle = :solid,
-)
-
 curves = Dict{String,Any}()
 
 function register!(label, L, trajectory_options, plot_options; plot=true)
@@ -120,6 +106,20 @@ register!(
 
 ##########################################################################################
 #= PLOT THE DATA =#
+
+DEFAULT_PLOT = (
+    markerstrokewidth = 0,
+    seriesalpha = 0.6,
+    linewidth = 2,
+)
+PYTHON_PLOT = (
+    markershape = :circle,
+    linestyle = :dot,
+)
+JULIA_PLOT = (
+    markershape = :star,
+    linestyle = :solid,
+)
 
 function add_plots!(RB, PQ, Plotter, curve)
     Plotter.add!(RB, curve.python_RB;
