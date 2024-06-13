@@ -127,8 +127,8 @@ end
 
 ##########################################################################################
 
-fig_dir = "rosenbrock/fig"
-handle = "dimensions_powerquad"
+dir = "rosenbrock/fig"
+prefix = "dimensions_powerquad"
 
 # MAKE THE CONVERGENCE PLOTS
 convergence = ConvergencePlots.init(; log=true, nfev=false)
@@ -136,7 +136,7 @@ for (label, curve) in pairs(curves)
     curve.plot || continue
     ConvergencePlots.add!(convergence, curve.data; label=label, curve.kwargs...)
 end
-Plots.savefig(convergence, "$fig_dir/$handle.convergence.pdf")
+Plots.savefig(convergence, "$dir/$prefix.convergence.pdf")
 
 # MAKE THE COST PLOTS
 cost = CostPlots.init(; log=true)
@@ -144,7 +144,7 @@ for (label, curve) in pairs(curves)
     curve.plot || continue
     CostPlots.add!(cost, curve.data; label=label, curve.kwargs...)
 end
-Plots.savefig(cost, "$fig_dir/$handle.cost.pdf")
+Plots.savefig(cost, "$dir/$prefix.cost.pdf")
 
 # MAKE THE COST PLOTS
 trajectory = TrajectoryPlots.init(fn; )
@@ -152,4 +152,4 @@ for (label, curve) in pairs(curves)
     curve.plot || continue
     TrajectoryPlots.add!(trajectory, curve.data; label=label, curve.kwargs...)
 end
-Plots.savefig(trajectory, "$fig_dir/$handle.trajectory.pdf")
+Plots.savefig(trajectory, "$dir/$prefix.trajectory.pdf")

@@ -15,7 +15,7 @@ module CostPlots
     )
 
     function add!(plt, data; include_g=false, kwargs...)
-        plot!(plt, data.nfev, data.f ./ data.f[begin];
+        plot!(plt, data.nfev, data.f;
             linestyle=:solid, linewidth = 3, label=false,
             kwargs...,
         )

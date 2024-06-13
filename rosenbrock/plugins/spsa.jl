@@ -6,44 +6,40 @@ module SPSAPlugin
 
     import LinearAlgebra
 
-    #= TODO: Eventually much of this will be wrapped up
-        in various options to SPSAOptimizers.optimize!. =#
-
-    function trajectory(fn, x0; order=1, optimizer=nothing, niter=100, options...)
+    function trajectory(fn, x0; order=1,
+        optimizer = nothing,
+        optimizeroptions=NamedTuple(),
+        options...
+    )
         L = length(x0)
         isnothing(optimizer) && (
-            optimizer = order == 1 ? SPSAOptimizers.SPSA(L; options...) :
-                        # order == 2 ? SPSAOptimizers.QiskitSPSA2(L; options...) :
-                                    error("order ≠ 1 or 2 is not (yet) implemented")
+            optimizer =
+                order == 1 ? SPSAOptimizers.SPSA1(L; optimizeroptions...) :
+                order == 2 ? SPSAOptimizers.SPSA2(L; optimizeroptions...) :
+                error("order ≠ 1 or 2 is not (yet) implemented")
         )
 
-        nfevs = Int[]; xs = Vector{Float}[]; fs = Float[]; Δxs = Float[]
+        record = SPSAOptimizers.Record(optimizer, L)
+        trace = SPSAOptimizers.Trace()
 
-        x = deepcopy(x0)
-
-        nfev = Ref(0)
-        f = Ref(0.0)
-        g = similar(x)
-        p = similar(x)
-        for _ in 1:niter
-            SPSAOptimizers.Optimizers.iterate!(
-                optimizer, x, fn;
-                nfev=nfev, f=f, g=g, p=p,
-            )
-
-            push!(nfevs, nfev[])
-            push!(xs, deepcopy(x))
-            push!(fs, f[])
-            push!(Δxs, LinearAlgebra.norm(p))
-        end
+        SPSAOptimizers.optimize!(
+            optimizer, fn, x0;
+            options...,
+            record = record,
+            trace = trace,
+            tracefields = Symbol[],
+        )
 
         return (
-            nfev = [0; nfevs],
-            x = transpose(reduce(hcat, [[x0]; xs])),
-            f = [fn(x0); fs],
-            g = [0.0; Δxs],
+            nfev = SPSAOptimizers.trajectory(trace, :nfev),
+            x = transpose(SPSAOptimizers.trajectory(trace, :xp)),
+            f = SPSAOptimizers.trajectory(trace, :fp),
+            g = LinearAlgebra.norm.(SPSAOptimizers.trajectory(trace, :g)),
             optimizer = optimizer,
+            record = record,
+            trace = trace,
         )
+
     end
 
 end

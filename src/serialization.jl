@@ -2,7 +2,7 @@
 """
 module Serialization
     const __REGISTRY__ = Dict{Symbol,Type}()
-    __register__(type::Type) = __REGISTRY__[Symbol(type)] = type
+    __register__(type::Type) = __REGISTRY__[nameof(type)] = type
 
     """
     """
@@ -36,7 +36,7 @@ module Serialization
     """
     function serialize(object)
         return (
-            type = String(Symbol(typeof(object))),
+            type = String(nameof(typeof(object))),
             data = __data__(object),
         )
     end
@@ -44,7 +44,7 @@ module Serialization
     """
     """
     function deserialize(json)
-        T = REGISTRY[json.type]
+        T = __REGISTRY__[Symbol(json.type)]
         object = init(T, json.data)
         load!(object, json.data)
         return object

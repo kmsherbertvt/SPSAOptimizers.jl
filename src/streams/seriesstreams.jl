@@ -25,7 +25,7 @@ module PowerStreams
     """
     """
     @with_kw struct PowerSeries <: Streams.StreamType{Float}
-        a0::Float
+        a0::Float = one(Float)
         γ::Float = one(Float)
         A::Float = zero(Float)
         k::Ref{Int} = Ref(0)
