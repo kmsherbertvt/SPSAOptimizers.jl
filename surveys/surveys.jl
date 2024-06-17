@@ -9,8 +9,8 @@ module CensusTemplates
         η0 = [0.01, 0.1, 2π/10, 1.0],
         α = [:minimal, :optimal],
         ApK = [:qiskit, :spall],
-        h0 = [:spall],      # TODO: Be open to extending this (noisy).
-        γ = [:minimal],     # TODO: I don't trust this (noisy).
+        h0 = [:spall],
+        γ = [:optimal],
         # BERNOULLI DISTRIBUTION
         NpL = [1.0],
         p = [1.0],
@@ -28,6 +28,8 @@ module CensusTemplates
         η0 = [0.01, 0.1, 2π/10, 1.0],
         α = [:minimal, :optimal],
         ApK = [:qiskit, :spall, 0.5, 1.0],
+            #= The largest stability constants appear useless.
+                Spall's choice is most helpful When η is smaller. =#
         h0 = [:qiskit, :spall],
         γ = [:minimal, :optimal],
         # BERNOULLI DISTRIBUTION
@@ -63,7 +65,7 @@ module CensusTools
         :trust, :tolerance,
     ]
     const DERIVED = [:K, :A, :a0, :N]
-    const OUTPUT = [:fp, :nfev, :time, :bytes]
+    const OUTPUT = [:fp, :nfev]
     const ALL_FIELDS = [INPUT..., CONTROL..., DERIVED..., OUTPUT...]
 
     """ __input__(; inputs...) -> input... """
