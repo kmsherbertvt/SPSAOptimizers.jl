@@ -10,5 +10,21 @@ Documentation for [SPSAOptimizers](https://github.com/kmsherbertvt/SPSAOptimizer
 ```
 
 ```@autodocs
-Modules = [SPSAOptimizers]
+Modules = [
+    SPSAOptimizers,
+    Serialization,
+    Streams,
+    PowerStreams,
+    ConstantStreams,
+    RandomStreams,
+    DictStreams,
+    Hessians,
+    TrajectoryHessians,
+    Optimizers,
+    FirstOrderOptimizers,
+    SPSA1s,
+    SecondOrderOptimizers,
+    SPSA2s,
+    QiskitInterface,
+]
 ```
