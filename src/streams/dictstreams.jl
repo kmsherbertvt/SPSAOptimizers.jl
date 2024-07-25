@@ -8,6 +8,10 @@ module DictStreams
     import Parameters: @with_kw
 
     """
+        IntDictStream(dict, default)
+
+    A customized stream specifying the output for any given specific iteration in `dict`,
+        or otherwise a fixed constant `default`.
     """
     @with_kw struct IntDictStream <: Streams.StreamType{Int}
         dict::Dict{Int,Int} = Dict{Int,Int}()
@@ -38,8 +42,6 @@ module DictStreams
         D
     )
 
-    """
-    """
     function Streams.next!(D::IntDictStream)
         D.k[] += 1
         return get(D.dict, D.k[]-1, D.default)

@@ -2,12 +2,59 @@ module FirstOrderOptimizers
     import ..Optimizers
 
     """
-    Document `iterate!` interface here.
+        FirstOrderOptimizer{F}
+
+    Super-type for first-order optimizers.
+    (I'm pretty sure there's just the one, `SPSA1`.)
+    Constructors are documented with the concrete type(s?),
+        but find details on optimization options,
+        record schematics, and `iterate!` keyword arguments here:
+
+    # `Record` Schematic
+
+        Record(::FirstOrderOptimizer{F}, L::Int)
+
+    Constructs a `NamedTuple` with fields
+    - x::Vector{F} of length L, the current parameters
+    - f::Ref{F}, the current function value
+    - g::Vector{F} of length L, the current gradient estimate
+    - p::Vector{F} of length L, the current parameter step (based on gradient)
+    - xp::Vector{F} of length L, the proposed parameters for the next iteration
+    - fp::Ref{F}, the function value at the next iteration
+    - nfev::Ref{Int}, the number of function evaluations to date
+    - time::Ref{F}, the algorithm time to date
+    - bytes::Ref{F}, the memory consumption to date
+
+    # Additional `optimize!` Keyword Arguments
+    - trust::F=Inf, the maximum allowable norm of `p`
+
+        If `p` has a larger norm, it gets clipped to `trust`.
+
+    - tolerance::F=Inf, the amount by which `fp` may exceed `f` without rejecting the step
+
+    # `iterate!` Interface
+
+        iterate!(
+            optimizer, fn, x;
+            # EXTRA OPTIONS
+            trust,
+            # TRACEABLES
+            f, g, p, xp, nfev,
+            # WORK ARRAYS
+            __xe
+        )
+
+    - optimizer, fn, x: the mandatory positional arguments, see `iterate!`
+    - trust: see above
+    - f, g, p, xp, nfev: when provided, stores meaningful outputs
+        (when called through `optimize!`,
+            these are provided from the `record` of the last successful iteration).
+    - __xe: a work variable matching the dimensions of x,
+        used to store the stochastically perturbed parameters for finite difference
+
     """
     abstract type FirstOrderOptimizer{F} <: Optimizers.OptimizerType{F} end
 
-    """
-    """
     function Optimizers.Record(::FirstOrderOptimizer{F}, L::Int) where {F}
         return (
             x = zeros(F, L),
@@ -22,21 +69,6 @@ module FirstOrderOptimizers
         )
     end
 
-    """
-
-    Output:
-
-    A `record` is returned at the end, averaged over the last so many
-    If you'd like, provide `record` as a kwarg,
-        so that you have *something* if an error occurs
-        (including a keyboard interrupt exception, e.g.),
-        though these results won't be averaged unless the function completes.
-
-    Qiskit provides an option for the result to be the average of the last so many successful steps. That option is provided for by setting the `average_last` kwarg to an integer.
-
-    You can also provide a `trace`, which is a list of records of every single step. By default, these trace records contain only the scalar attributes of a typical record. Set the `tracefields` kwarg to an empty collection to trace everything, or a collection of field names (as symbols) to be more specific.
-
-    """
     function Optimizers.optimize!(
         optimizer::FirstOrderOptimizer{F}, fn, x0;
         maxiter = 100,
@@ -146,8 +178,6 @@ module FirstOrderOptimizers
     end
 end
 
-"""
-"""
 module SPSA1s
     import ..Float
     import ..Serialization
@@ -166,6 +196,45 @@ module SPSA1s
     import ..IntDictStream
 
     """
+        SPSA1{P}(η, h, e, n)
+
+    The first-order SPSA optimizer.
+
+    # Type Parameters
+    - P::Int, the order of finite difference, typically 2
+
+    # Parameters
+    - η - the float stream for step-length at each iteration
+    - h - the float stream for finite-difference perturbation at each iteration
+    - e - the vector stream for each finite difference perturbation direction
+        This also determines the dimensions in the parameter vector.
+    - n - the int stream for number of times to sample the gradient at each iteration
+
+
+
+        SPSA1(L; P, η, h, e, n)
+
+    With this constructor, you need only provide the number of dimensions `L`,
+        and all the above parameters will be filled in by sensible defaults
+        (but you can override any of them with the kwarg).
+
+    Additionally, you may use the `η` and `h` kwargs to specify tuples
+        defining a power series.
+
+    # Defaults
+    - P: 2, of course - central finite difference
+    - η: a power series with a0 = 0.2, alpha=0.602, and A = 0
+    - h: a power series with c0 = 0.2 and gamma=0.101
+    - e: a fair coin-toss between +/-1 for each dimension
+    - n: one sample for every iteration
+
+    # Tuple Interface
+    If you don't feel like manually constructing the PowerStream object,
+        you can just pass a tuple directly here.
+
+    - η: `(a0, alpha, A)` all floats (even though A is semantically an integer)
+    - h: `(c0, gamma)` all floats (note A is always 0 for the h stream)
+
     """
     struct SPSA1{P} <: FirstOrderOptimizer{Float}
         η::StreamType{Float}
@@ -236,8 +305,6 @@ module SPSA1s
         spsa
     )
 
-    """
-    """
     function Optimizers.iterate!(
         spsa::SPSA1{P}, fn, x;
         # EXTRA OPTIONS

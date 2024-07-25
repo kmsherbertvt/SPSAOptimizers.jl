@@ -94,6 +94,21 @@ module QiskitInterface
         return SPSAOptimizers.ConstantSeries(eta)
     end
 
+    """
+        SPSA(L; kwargs...)
+
+    Initialize an SPSA optimization.
+    The interface is identical to qiskit's,
+        except that there is one required argument `L` giving the number of parameters,
+        and the `learning_rate` and `perturbation` arguments are mandatory.
+
+    (Unlike in qiskit, the number of parameters has to be fixed ahead of time
+        to ensure the serializability of the random stream.)
+
+    See here for qiskit's interface:
+        https://docs.quantum.ibm.com/api/qiskit/0.28/qiskit.algorithms.optimizers.SPSA
+
+    """
     function SPSA(L::Int;
         learning_rate,                              # REQUIRED
         perturbation,                               # REQUIRED
@@ -233,6 +248,17 @@ module QiskitInterface
         )
     end
 
+    """
+        minimize(spsa, fn, x0)
+
+    Run an optimization.
+
+    # Parameters
+    - `spsa` - the result of `QiskitInterface.SPSA`
+    - `fn` - the function, fn(x) (where x is a vector of parameters)
+    - `x0` - the initial guess
+
+    """
     function minimize(spsa, fn, x0)
         SPSAOptimizers.optimize!(spsa.optimizer, fn, x0; spsa.options...)
         return (

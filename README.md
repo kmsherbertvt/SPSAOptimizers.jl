@@ -5,9 +5,6 @@
 [![Build Status](https://github.com/kmsherbertvt/SPSAOptimizers.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/kmsherbertvt/SPSAOptimizers.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/kmsherbertvt/SPSAOptimizers.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/kmsherbertvt/SPSAOptimizers.jl)
 
-
-
-
 Simultaneous Perturbation Stochastic Approximation (SPSA) is a scheme to optimize a multivariate function using a stochastic gradient descent that minimizes cost function evalutions and provides some robustness against noise.
 
 ## Motivation

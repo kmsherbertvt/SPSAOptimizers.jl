@@ -10,6 +10,23 @@ module RandomStreams
 
 
     """
+        BernoulliDistribution(L, k, p, seed)
+
+    A Bernoulli distribution yielding a vector of +/-1.
+
+    # Parameters
+    - L::Int, the length of the vector to generate
+    - k::Int=L, the number of elements in the vector to randomize
+        If an element isn't randomized, it is set to 0.
+        Which elements to randomize are...selected randomly. :)
+    - p::Int=1.0, the probability of randomizing any given element in the vector
+
+    NOTE: k and p are different and mutually exclusive ways
+        to let 0's sneak into the Bernoulli distribution.
+    The defaults are just "no 0's allowed",
+            i.e. an actual Bernoulli distribution.
+
+    - seed::Int, the random seed defining the pseudorandom stream
     """
     @with_kw struct BernoulliDistribution <: Streams.StreamType{Vector{Float}}
         L::Int
@@ -69,8 +86,6 @@ module RandomStreams
         return zero(Float)
     end
 
-    """
-    """
     function Streams.next!(X::BernoulliDistribution)
         X.__vector__ .= 1
         Random.rand!(X.__rng__, @view(X.__vector__[1:X.k]))

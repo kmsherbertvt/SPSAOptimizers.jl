@@ -13,7 +13,6 @@ Let η[k] = η0 / (A + k + 1)^α
 - Set A to 10% of the maximum number of iterations.
 - Set a0 such that a[0] * |g(x0)| gives a desirable "change in magnitude" of x.
 
-
 """
 module PowerStreams
     import ..Float
@@ -23,6 +22,10 @@ module PowerStreams
     import Parameters: @with_kw
 
     """
+        PowerSeries(a0, γ, A)
+
+    Yield from the sequence ``a[k] = a_0 / (A + k + 1)^γ``.
+
     """
     @with_kw struct PowerSeries <: Streams.StreamType{Float}
         a0::Float = one(Float)
@@ -60,21 +63,23 @@ module PowerStreams
         a
     )
 
-    """
-    """
     function Streams.next!(a::PowerSeries)
         a.k[] += 1
         return a.a0 / (a.A + a.k[])^a.γ
     end
 end
 
-"""
-"""
 module ConstantStreams
     import ..Float
     import ..Serialization
     import ..Streams
 
+    """
+        ConstantSeries(C)
+
+    Yield the number C, every time.
+
+    """
     struct ConstantSeries <: Streams.StreamType{Float}
         C::Float
     end

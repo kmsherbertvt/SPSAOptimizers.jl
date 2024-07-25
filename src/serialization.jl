@@ -33,6 +33,10 @@ module Serialization
     function reset! end
 
     """
+        serialize(object)
+
+    Convert an object into a JSON-serializable NamedTuple.
+
     """
     function serialize(object)
         return (
@@ -42,6 +46,10 @@ module Serialization
     end
 
     """
+        deserialize(json)
+
+    Convert a JSON-serializable NamedTuple into an object.
+
     """
     function deserialize(json)
         T = __REGISTRY__[Symbol(json.type)]

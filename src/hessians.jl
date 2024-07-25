@@ -1,27 +1,28 @@
-
-"""
-"""
 module Hessians
 
     """
+    An internal representation of a "tracked" Hessian,
+        e.g. the average of Hessians measured at each iteration in the trajectory.
     """
     abstract type HessianType{F} end
 
     """
         update!(H::HessianType{F}, Hm::AbstractMatrix{F})
+
+    Update the "tracked" Hessian `H` with the "measured" Hessian `Hm`.
     """
     function update! end
 
     """
         regularized(H::HessianType{F})
+
+    A bit of post-processing to construct a positive semi-definite version of `H`.
     """
     function regularized end
 
 end
 
 
-"""
-"""
 module TrajectoryHessians
     import ..Float
     import ..Serialization
@@ -30,7 +31,26 @@ module TrajectoryHessians
     import LinearAlgebra
 
     """
-        Hessian is average of Hessians from each iteration in trajectory.
+        TrajectoryHessian(bias, H, k)
+
+    Hessian is average of Hessians from each iteration in trajectory.
+
+    # Parameters
+    - bias::Float - the regularization bias,
+        i.e. the iotum of an identity matrix to add
+        when computing a positive semi-definite version of this matrix
+    - H::Matrix{Float} - the average Hessian over all `k` iterations
+    - k::Ref{Int} - the number of iterations over which `H` is averaged
+
+        TrajectoryHessian(L; bias)
+
+    Convenience constructor which initializes `H` to an LxL matrix,
+        and `k` to 0.
+    The `bias` defaults to 0.01 but can be overridden.
+
+    Note that we initialize `H` to identity, but this does not matter because,
+        with k=0, it will be weighted by 0 in the first update!
+
     """
     struct TrajectoryHessian <: Hessians.HessianType{Float}
         bias::Float

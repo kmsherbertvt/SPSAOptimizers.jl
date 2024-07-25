@@ -1,15 +1,75 @@
-"""
-"""
 module SecondOrderOptimizers
     import ..Optimizers
 
     """
-    Document `iterate!` interface here.
+        SecondOrderOptimizer{F}
+
+    Super-type for first-order optimizers.
+    (Just `SPSA2` for now but I have visions of how to enhance.
+        They probably aren't worth the effort, though.)
+    Constructors are documented with the concrete type(s?),
+        but find details on optimization options,
+        record schematics, and `iterate!` keyword arguments here:
+
+    # `Record` Schematic
+
+        Record(::FirstOrderOptimizer{F}, L::Int)
+
+    Constructs a `NamedTuple` with fields
+    - x::Vector{F} of length L, the current parameters
+    - f::Ref{F}, the current function value
+    - g::Vector{F} of length L, the current gradient estimate
+    - H::Matrix{F} of size(L,L), the current Hessian estimate
+    - p::Vector{F} of length L, the current parameter step (based on gradient)
+    - xp::Vector{F} of length L, the proposed parameters for the next iteration
+    - fp::Ref{F}, the function value at the next iteration
+    - nfev::Ref{Int}, the number of function evaluations to date
+    - time::Ref{F}, the algorithm time to date
+    - bytes::Ref{F}, the memory consumption to date
+
+    # Additional `optimize!` Keyword Arguments
+    - trust::F=Inf, the maximum allowable norm of `p`
+
+        If `p` has a larger norm, it gets clipped to `trust`.
+
+    - tolerance::F=Inf, the amount by which `fp` may exceed `f` without rejecting the step
+
+    - warmup::Int=0, after how many iterations to begin refining the step with the Hessian
+        (rather than just using gradient directly)
+
+    - solver, a function with header `solver(H, g)`
+        returning the "preconditioned" ``H^{-1} g``
+
+    # `iterate!` Interface
+
+        iterate!(
+            optimizer, fn, x;
+            # EXTRA OPTIONS
+            trust, precondition, solver,
+            # TRACEABLES
+            f, g, H, p, xp, nfev,
+            # WORK ARRAYS
+            __xe,
+            __e1,
+        )
+
+    - optimizer, fn, x: the mandatory positional arguments, see `iterate!`
+    - trust, solver: see above
+    - precondition: whether or not to use the Hessian in this iteration
+    - f, g, H, p, xp, nfev: when provided, stores meaningful outputs
+        (when called through `optimize!`,
+            these are provided from the `record` of the last successful iteration).
+    - __xe: a work variable matching the dimensions of x,
+        Used to store the stochastically perturbed parameters for finite difference
+    - __e1: a work variable matching the dimensions of x
+        Used to store one of the two perturbation vectors
+            needed for second order finite difference.
+        Note that the other one is stored within the stream object,
+            which is why this isn't needed at all in first-order.
+
     """
     abstract type SecondOrderOptimizer{F} <: Optimizers.OptimizerType{F} end
 
-    """
-    """
     function Optimizers.Record(::SecondOrderOptimizer{F}, L::Int) where {F}
         return (
             x = zeros(F, L),
@@ -141,13 +201,6 @@ module SecondOrderOptimizers
     end
 end
 
-
-
-
-
-
-"""
-"""
 module SPSA2s
     import ..Float
     import ..Serialization
@@ -166,7 +219,45 @@ module SPSA2s
     import ..PowerSeries
     import ..IntDictStream
 
+
     """
+        SPSA2(H, η, h, e, n)
+
+    The second-order SPSA optimizer.
+
+    # Parameters
+    - H - the Hessian object, updated at each iteration
+    - η - the float stream for step-length at each iteration
+    - h - the float stream for finite-difference perturbation at each iteration
+    - e - the vector stream for each finite difference perturbation direction
+        This also determines the dimensions in the parameter vector.
+    - n - the int stream for number of times to sample the gradient at each iteration
+
+
+
+        SPSA2(L; H, η, h, e, n)
+
+    With this constructor, you need only provide the number of dimensions `L`,
+        and all the above parameters will be filled in by sensible defaults
+        (but you can override any of them with the kwarg).
+
+    Additionally, you may use the `η` and `h` kwargs to specify tuples
+        defining a power series.
+
+    # Defaults
+    - H: a fresh LxL `TrajectoryHessian` with regularization bias 0.01
+    - η: a power series with a0 = 0.2, alpha=0.602, and A = 0
+    - h: a power series with c0 = 0.2 and gamma=0.101
+    - e: a fair coin-toss between +/-1 for each dimension
+    - n: one sample for every iteration
+
+    # Tuple Interface
+    If you don't feel like manually constructing the PowerStream object,
+        you can just pass a tuple directly here.
+
+    - η: `(a0, alpha, A)` all floats (even though A is semantically an integer)
+    - h: `(c0, gamma)` all floats (note A is always 0 for the h stream)
+
     """
     struct SPSA2 <: SecondOrderOptimizer{Float}
         H::HessianType{Float}
@@ -232,8 +323,6 @@ module SPSA2s
         spsa
     )
 
-    """
-    """
     function Optimizers.iterate!(
         spsa::SPSA2, fn, x;
         # EXTRA OPTIONS
